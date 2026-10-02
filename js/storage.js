@@ -34,6 +34,7 @@ const StorageService = {
       if (!raw) { UI.toast(t('Save not found'), 'error'); return; }
       const entry = JSON.parse(raw);
       DataService.setData(entry.data);
+      OrgChart.resetView();
       this._undoStack = [];
       this._redoStack = [];
       App.refresh();
