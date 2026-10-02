@@ -1,0 +1,55 @@
+/* ===== OrgChart Pro — Responsive ===== */
+
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed; top: var(--navbar-h); bottom: 0; left: 0;
+    transform: translateX(-100%); z-index: 60;
+    width: var(--sidebar-w);
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.mobile-open { transform: translateX(0); }
+  .sidebar-overlay.active { display: block; }
+
+  .detail-drawer.open { width: 300px; }
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .navbar-org { display: none; }
+  .search-box kbd { display: none; }
+}
+
+@media (max-width: 768px) {
+  .navbar-center { display: none; }
+  .navbar-right .btn-secondary span { display: none; }
+
+  .view { padding: 16px; }
+  .view-header { flex-direction: column; gap: 12px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .form-grid { grid-template-columns: 1fr; }
+
+  .detail-drawer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    width: 100% !important; height: 0;
+    border-left: none; border-top: 1px solid var(--border);
+    transition: height 0.3s ease;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    z-index: 70;
+  }
+  .detail-drawer.open { height: 60vh; }
+
+  .chart-controls {
+    left: 50%; transform: translateX(-50%);
+    bottom: 12px; flex-direction: row;
+  }
+  .ctrl-divider { width: 1px; height: 20px; margin: 0 2px; }
+
+  .toast-container { left: 16px; right: 16px; bottom: 16px; }
+  .toast { min-width: auto; }
+
+  .employee-filters { flex-direction: column; }
+}
+
+@media (max-width: 480px) {
+  :root { --navbar-h: 48px; }
+  .kpi-grid { grid-template-columns: 1fr; }
+  .kpi-value { font-size: 24px; }
+  .navbar-brand .brand-text { display: none; }
+}

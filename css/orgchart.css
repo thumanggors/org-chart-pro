@@ -1,0 +1,200 @@
+/* ===== OrgChart Pro — Chart Styles ===== */
+
+/* ===== Chart Container ===== */
+.chart-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+}
+.toolbar-group { display: flex; align-items: center; gap: 8px; }
+
+.chart-container {
+  flex: 1; position: relative;
+  background: var(--bg-app);
+  overflow: hidden;
+  cursor: grab;
+  background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.chart-container:active { cursor: grabbing; }
+
+#viewOrgchart {
+  display: flex; flex-direction: column;
+  padding: 0;
+  height: 100%;
+}
+#viewOrgchart.hidden { display: none; }
+
+/* Floating Controls */
+.chart-controls {
+  position: absolute; left: 16px; bottom: 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 4px; display: flex; flex-direction: column; gap: 2px;
+  z-index: 20;
+}
+.ctrl-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: var(--radius-sm);
+  background: none; border: none; color: var(--text-secondary);
+  cursor: pointer; transition: all var(--transition);
+}
+.ctrl-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.ctrl-divider { height: 1px; background: var(--border); margin: 2px 4px; }
+
+.zoom-level {
+  position: absolute; right: 16px; bottom: 16px;
+  background: var(--bg-primary); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 4px 10px;
+  font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+  z-index: 20; box-shadow: var(--shadow-sm);
+}
+
+/* ===== SVG Chart ===== */
+#orgchartSvg { width: 100%; height: 100%; }
+
+/* Connector lines */
+.org-link {
+  fill: none;
+  stroke: var(--link);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  transition: stroke 0.3s ease;
+}
+.org-link.highlighted {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+/* Empty state */
+.chart-empty {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  color: var(--text-secondary); font-size: 14px;
+  cursor: default;
+}
+.chart-empty-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+/* Node groups */
+.org-node { cursor: pointer; }
+.org-node:hover .node-bg { filter: brightness(0.97); }
+
+/* Node background */
+.node-bg {
+  fill: var(--bg-primary);
+  stroke: var(--border);
+  stroke-width: 1.5;
+  rx: 10;
+  transition: all 0.2s ease;
+}
+.org-node:hover .node-bg { stroke: var(--accent); stroke-width: 2; }
+.org-node.selected .node-bg {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.2));
+}
+.org-node.dragging { opacity: 0.6; }
+
+/* Node top bar (colored accent) */
+.node-accent-bar {
+  rx: 10;
+  transition: fill 0.2s ease;
+}
+
+/* Node text */
+.node-name {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  fill: var(--text-primary);
+  font-size: 12px;
+}
+.node-title-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  fill: var(--text-secondary);
+  font-size: 11px;
+}
+.node-dept-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  fill: var(--text-tertiary);
+  font-size: 10px;
+}
+.node-meta-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  fill: var(--text-tertiary);
+  font-size: 10px;
+}
+.node-type-badge {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Avatar circle */
+.node-avatar {
+  fill: var(--accent-light);
+  stroke: none;
+}
+.node-avatar-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  fill: var(--accent);
+  font-size: 13px;
+}
+
+/* Expand/Collapse toggle */
+.node-toggle {
+  cursor: pointer;
+}
+.node-toggle circle {
+  fill: var(--bg-primary);
+  stroke: var(--link);
+  stroke-width: 1.5;
+  transition: all 0.2s ease;
+}
+.node-toggle:hover circle {
+  fill: var(--accent-subtle);
+  stroke: var(--accent);
+}
+.node-toggle text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  fill: var(--text-secondary);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* Drop target highlight */
+.org-node.drop-target .node-bg {
+  stroke: var(--success);
+  stroke-width: 2.5;
+  stroke-dasharray: 5,3;
+}
+
+/* ===== Dark mode SVG overrides ===== */
+[data-theme="dark"] .node-bg { fill: var(--bg-primary); stroke: var(--border); }
+[data-theme="dark"] .node-name { fill: var(--text-primary); }
+[data-theme="dark"] .node-title-text { fill: var(--text-secondary); }
+[data-theme="dark"] .node-dept-text { fill: var(--text-tertiary); }
+[data-theme="dark"] .node-meta-text { fill: var(--text-tertiary); }
+[data-theme="dark"] .node-avatar { fill: var(--accent-light); }
+[data-theme="dark"] .node-avatar-text { fill: var(--accent); }
+[data-theme="dark"] .node-toggle circle { fill: var(--bg-primary); stroke: var(--link); }
+
+/* Fullscreen */
+.chart-container.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg-app);
+}

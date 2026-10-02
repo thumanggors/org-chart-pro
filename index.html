@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OrgChart Pro — Enterprise Organization Structure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/orgchart.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-logo">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <rect width="48" height="48" rx="12" fill="var(--accent)"/>
+          <path d="M14 16h20v4H14zM20 24h8v4h-8zM14 32h8v4h-8zM28 32h8v4h-8z" fill="white" opacity="0.9"/>
+          <path d="M24 20v4M24 28v4M20 28h-2v4M28 28h2v4" stroke="white" stroke-width="1.5" opacity="0.7"/>
+        </svg>
+      </div>
+      <div class="loading-text">OrgChart Pro</div>
+      <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- Top Navbar -->
+  <nav class="navbar">
+    <div class="navbar-left">
+      <button class="btn-icon sidebar-toggle" onclick="App.toggleSidebar()" title="Toggle Sidebar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div class="navbar-brand">
+        <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
+          <rect width="48" height="48" rx="10" fill="var(--accent)"/>
+          <path d="M14 16h20v3H14zM20 23h8v3h-8zM14 30h8v3h-8zM28 30h8v3h-8z" fill="white" opacity="0.9"/>
+          <path d="M24 19v4M24 26v4M20 26h-2v4M28 26h2v4" stroke="white" stroke-width="1.2" opacity="0.7"/>
+        </svg>
+        <span class="brand-text">OrgChart <span class="brand-accent">Pro</span></span>
+      </div>
+      <div class="navbar-org" id="navbarOrgName">Untitled</div>
+    </div>
+    <div class="navbar-center">
+      <div class="search-box" id="globalSearch">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" placeholder="Search employees, departments..." id="searchInput" autocomplete="off">
+        <kbd>Ctrl+F</kbd>
+        <div class="search-results" id="searchResults"></div>
+      </div>
+    </div>
+    <div class="navbar-right">
+      <button class="btn-icon" onclick="App.undo()" title="Undo (Ctrl+Z)" id="btnUndo" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+      </button>
+      <button class="btn-icon" onclick="App.redo()" title="Redo (Ctrl+Y)" id="btnRedo" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+      </button>
+      <div class="navbar-divider"></div>
+      <button class="btn-icon btn-lang" onclick="App.toggleLang()" title="Language" id="btnLang">ID</button>
+      <button class="btn-icon" onclick="App.toggleTheme()" title="Toggle Theme" id="btnTheme">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+      <button class="btn-secondary btn-sm" onclick="App.showExportMenu(event)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+    </div>
+  </nav>
+
+  <!-- Export Dropdown -->
+  <div class="dropdown-menu" id="exportMenu">
+    <button onclick="ExportService.exportPNG()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg> Export PNG</button>
+    <button onclick="ExportService.exportSVG()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 12h10M12 7v10"/></svg> Export SVG</button>
+    <button onclick="ExportService.exportPDF()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg> Export PDF</button>
+    <div class="dropdown-divider"></div>
+    <button onclick="ExportService.exportExcel()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18M3 15h18"/></svg> Export Excel</button>
+    <button onclick="ExportService.exportJSON()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg> Export JSON</button>
+  </div>
+
+  <!-- Main Layout -->
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <nav class="sidebar-nav">
+        <button class="sidebar-item active" data-view="dashboard" onclick="App.switchView('dashboard')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="sidebar-item" data-view="orgchart" onclick="OrgChart.showDepartment('')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"/><rect x="2" y="12" width="8" height="4" rx="1"/><rect x="14" y="12" width="8" height="4" rx="1"/><path d="M12 6v3M6 12V9h12v3"/></svg>
+          <span>Organization</span>
+        </button>
+        <button class="sidebar-item" data-view="employees" onclick="App.switchView('employees')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Employees</span>
+        </button>
+        <button class="sidebar-item" data-view="departments" onclick="App.switchView('departments')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="5" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="16" width="7" height="5" rx="1"/><path d="M6.5 8v10.5H14M17.5 8v8"/></svg>
+          <span>Departments</span>
+        </button>
+
+        <div class="sidebar-section-label">Tools</div>
+        <button class="sidebar-item" onclick="ImportService.showImportModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Import</span>
+        </button>
+
+        <div class="sidebar-section-label">Data</div>
+        <button class="sidebar-item" onclick="StorageService.showSaveModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          <span>Save</span>
+        </button>
+        <button class="sidebar-item" onclick="StorageService.showLoadModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <span>Load</span>
+        </button>
+        <button class="sidebar-item" onclick="DataService.clearAll()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <span>Clear All</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-text">OrgChart Pro v1.0</div>
+      </div>
+    </aside>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="App.toggleSidebar()"></div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+
+      <!-- Dashboard View -->
+      <div class="view" id="viewDashboard">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Dashboard</h1>
+            <p class="view-subtitle">Organization overview and analytics</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn-primary" onclick="App.switchView('orgchart')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"/><rect x="2" y="12" width="8" height="4" rx="1"/><rect x="14" y="12" width="8" height="4" rx="1"/><path d="M12 6v3M6 12V9h12v3"/></svg>
+              View Org Chart
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid" id="kpiGrid"></div>
+
+        <!-- Charts Row -->
+        <div class="dashboard-grid">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Department Distribution</h3>
+            </div>
+            <div class="card-body" id="chartDeptDistribution"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Headcount by Department</h3>
+            </div>
+            <div class="card-body" id="chartHeadcount"></div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Management Layers</h3>
+            </div>
+            <div class="card-body" id="chartManagement"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Recent Changes</h3>
+            </div>
+            <div class="card-body" id="recentChanges">
+              <div class="empty-state-sm">No recent changes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OrgChart View -->
+      <div class="view hidden" id="viewOrgchart">
+        <!-- Chart Toolbar -->
+        <div class="chart-toolbar" id="chartToolbar">
+          <div class="toolbar-group">
+            <select class="toolbar-select" id="filterDepartment" onchange="OrgChart.applyFilters()">
+              <option value="">All Departments</option>
+            </select>
+            <select class="toolbar-select" id="filterType" onchange="OrgChart.applyFilters()">
+              <option value="">All Levels</option>
+              <option value="director">Directors</option>
+              <option value="department">Departments</option>
+              <option value="division">Divisions</option>
+              <option value="manager">Managers</option>
+              <option value="employee">Employees</option>
+            </select>
+          </div>
+          <div class="toolbar-group">
+            <button class="btn-secondary btn-sm hidden" id="btnBackDept" onclick="App.switchView('departments')">Back to Departments</button>
+            <button class="btn-icon-sm" onclick="OrgChart.toggleLayout()" title="Toggle Layout">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18"/></svg>
+            </button>
+            <button class="btn-icon-sm" onclick="App.addNode()" title="Add Node">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chart Canvas -->
+        <div class="chart-container" id="chartContainer">
+          <svg id="orgchartSvg" width="100%" height="100%"></svg>
+          <div class="chart-empty hidden" id="chartEmpty">
+            <p>No organization data yet.</p>
+            <div class="chart-empty-actions">
+              <button class="btn-primary" onclick="App.addNode('company')">Add First Node</button>
+              <button class="btn-secondary" onclick="ImportService.showImportModal()">Import Excel/CSV</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating Controls -->
+        <div class="chart-controls" id="chartControls">
+          <button class="ctrl-btn" onclick="OrgChart.zoomIn()" title="Zoom In">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
+          </button>
+          <button class="ctrl-btn" onclick="OrgChart.zoomOut()" title="Zoom Out">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/></svg>
+          </button>
+          <button class="ctrl-btn" onclick="OrgChart.fitToScreen()" title="Fit to Screen">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          </button>
+          <div class="ctrl-divider"></div>
+          <button class="ctrl-btn" onclick="OrgChart.expandAll()" title="Expand All">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+          </button>
+          <button class="ctrl-btn" onclick="OrgChart.collapseAll()" title="Collapse All">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></svg>
+          </button>
+          <div class="ctrl-divider"></div>
+          <button class="ctrl-btn" onclick="OrgChart.toggleFullscreen()" title="Fullscreen">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+
+        <!-- Zoom Level -->
+        <div class="zoom-level" id="zoomLevel">100%</div>
+      </div>
+
+      <!-- Employees View -->
+      <div class="view hidden" id="viewEmployees">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Employees</h1>
+            <p class="view-subtitle" id="employeeCount">0 employees</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn-primary" onclick="App.addNode('employee')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              Add Employee
+            </button>
+          </div>
+        </div>
+        <div class="employee-filters">
+          <select class="toolbar-select" id="empFilterDept" onchange="UI.filterEmployees()">
+            <option value="">All Departments</option>
+          </select>
+          <select class="toolbar-select" id="empFilterStatus" onchange="UI.filterEmployees()">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <div class="employee-table-wrap">
+          <table class="data-table" id="employeeTable">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Position</th>
+                <th>Department</th>
+                <th>Division</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="employeeTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Departments View -->
+      <div class="view hidden" id="viewDepartments">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Departments</h1>
+            <p class="view-subtitle">Structure chart per department</p>
+          </div>
+        </div>
+        <div class="kpi-grid" id="deptGrid"></div>
+      </div>
+    </main>
+
+    <!-- Detail Drawer -->
+    <aside class="detail-drawer" id="detailDrawer">
+      <div class="drawer-header">
+        <h3 class="drawer-title" id="drawerTitle">Node Details</h3>
+        <button class="btn-icon" onclick="UI.closeDrawer()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="drawer-body" id="drawerBody"></div>
+    </aside>
+  </div>
+
+  <!-- Add/Edit Node Modal -->
+  <div class="modal-overlay" id="nodeModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="nodeModalTitle">Add Organization Node</h3>
+        <button class="btn-icon" onclick="UI.closeModal('nodeModal')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="nodeForm" onsubmit="return false">
+          <input type="hidden" id="nodeId">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Node Type</label>
+              <select id="nodeType" required>
+                <option value="company">Company</option>
+                <option value="board">Board</option>
+                <option value="director">Director</option>
+                <option value="department">Department</option>
+                <option value="division">Division</option>
+                <option value="subdivision">Sub Division</option>
+                <option value="manager">Manager</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="employee" selected>Employee</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="nodeStatus">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Name <span class="required">*</span></label>
+            <input type="text" id="nodeName" required placeholder="Full name or unit name">
+          </div>
+          <div class="form-group">
+            <label>Position / Title</label>
+            <input type="text" id="nodeTitle" placeholder="e.g. Finance Manager">
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Department</label>
+              <input type="text" id="nodeDepartment" placeholder="Department name">
+            </div>
+            <div class="form-group">
+              <label>Division</label>
+              <input type="text" id="nodeDivision" placeholder="Division name">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Reports To (Parent)</label>
+            <select id="nodeParent">
+              <option value="">— Select Parent —</option>
+            </select>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Employee ID</label>
+              <input type="text" id="nodeEmpCode" placeholder="EMP001">
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="nodeEmail" placeholder="name@company.com">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="text" id="nodePhone" placeholder="+62 812 3456 7890">
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="nodeDescription" rows="2" placeholder="Additional notes"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Accent Color</label>
+            <input type="color" id="nodeColor" value="#2563eb">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="UI.closeModal('nodeModal')">Cancel</button>
+        <button class="btn-primary" onclick="App.saveNode()">Save Node</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div class="modal-overlay" id="importModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Import Organization Data</h3>
+        <button class="btn-icon" onclick="UI.closeModal('importModal')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="import-dropzone" id="importDropzone">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p>Drop your file here or <label class="link" for="importFileInput">browse</label></p>
+          <p class="text-sm text-muted">Supports .xlsx, .xls, .csv</p>
+          <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" hidden onchange="ImportService.handleFile(this.files[0])">
+        </div>
+        <div id="importPreview" class="hidden">
+          <div class="import-info" id="importInfo"></div>
+          <div class="import-validation" id="importValidation"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="UI.closeModal('importModal')">Cancel</button>
+        <button class="btn-primary hidden" id="btnConfirmImport" onclick="ImportService.confirmImport()">Confirm Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save/Load Modal -->
+  <div class="modal-overlay" id="storageModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="storageModalTitle">Save Organization</h3>
+        <button class="btn-icon" onclick="UI.closeModal('storageModal')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="storageModalBody"></div>
+      <div class="modal-footer" id="storageModalFooter"></div>
+    </div>
+  </div>
+
+  <!-- Confirm Dialog -->
+  <div class="modal-overlay" id="confirmDialog">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3 id="confirmTitle">Confirm</h3>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage">Are you sure?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="UI.closeModal('confirmDialog')">Cancel</button>
+        <button class="btn-danger" id="confirmAction">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/orgchart.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/import.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
