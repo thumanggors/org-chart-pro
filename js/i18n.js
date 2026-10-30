@@ -73,6 +73,8 @@ const I18n = {
       'Move Organization Unit?': 'Pindahkan Unit Organisasi?',
       'Move "{a}" under "{b}"?': 'Pindahkan "{a}" ke bawah "{b}"?',
       'Node moved successfully': 'Node berhasil dipindahkan',
+      'Reset layout (drag cards and lines to arrange · Shift+drag onto a card to change its parent)': 'Reset tata letak (seret kartu dan garis untuk menata · Shift+seret ke kartu lain untuk mengganti atasan)',
+      'Layout reset': 'Tata letak dikembalikan',
 
       // Departments
       'Structure chart per department': 'Bagan struktur per departemen',
@@ -188,6 +190,9 @@ const I18n = {
       'Save not found': 'Simpanan tidak ditemukan',
       'Organization loaded': 'Organisasi dimuat',
       'Load failed: corrupted data': 'Gagal memuat: data rusak',
+      'Download to computer': 'Unduh ke komputer',
+      'Open from computer': 'Buka dari komputer',
+      'Not an OrgChart Pro file': 'Bukan file OrgChart Pro',
 
       // Confirm dialog
       'Confirm': 'Konfirmasi',

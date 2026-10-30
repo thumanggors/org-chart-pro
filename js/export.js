@@ -199,6 +199,7 @@ const ExportService = {
     const theme = document.documentElement.getAttribute('data-theme');
     const isDark = theme === 'dark';
 
+    svgEl.querySelectorAll('.bus-handle').forEach(el => el.remove()); // editing hit areas, not artwork
     svgEl.querySelectorAll('.node-bg').forEach(el => {
       el.style.fill = isDark ? '#1a2332' : '#ffffff';
       el.style.stroke = isDark ? '#293548' : '#e2e8f0';

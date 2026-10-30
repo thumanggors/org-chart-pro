@@ -145,6 +145,7 @@ const StorageService = {
     `;
     footer.innerHTML = `
       <button class="btn-secondary" onclick="UI.closeModal('storageModal')">${t('Cancel')}</button>
+      <button class="btn-secondary" onclick="ExportService.exportJSON(); UI.closeModal('storageModal')">${t('Download to computer')}</button>
       <button class="btn-primary" onclick="StorageService.save(document.getElementById('saveName').value); UI.closeModal('storageModal')">${t('Save')}</button>
     `;
     UI.openModal('storageModal');
@@ -157,10 +158,15 @@ const StorageService = {
 
     const list = this._getSavedList();
     const keys = Object.keys(list);
+    const footerHtml = `
+      <label class="btn-secondary">${t('Open from computer')}
+        <input type="file" accept=".json,application/json" hidden onchange="StorageService.loadFile(this.files[0])">
+      </label>
+      <button class="btn-secondary" onclick="UI.closeModal('storageModal')">${t('Close')}</button>`;
 
     if (keys.length === 0) {
       body.innerHTML = `<div class="empty-state-sm">${t('No saved organizations')}</div>`;
-      footer.innerHTML = `<button class="btn-secondary" onclick="UI.closeModal('storageModal')">${t('Close')}</button>`;
+      footer.innerHTML = footerHtml;
     } else {
       body.innerHTML = '<div class="storage-list">' + keys.map(k => {
         const item = list[k];
@@ -176,8 +182,39 @@ const StorageService = {
           </div>
         </div>`;
       }).join('') + '</div>';
-      footer.innerHTML = `<button class="btn-secondary" onclick="UI.closeModal('storageModal')">${t('Close')}</button>`;
+      footer.innerHTML = footerHtml;
     }
     UI.openModal('storageModal');
+  },
+
+  // Open a project file previously downloaded from this app (Export JSON / Download to computer)
+  loadFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onerror = () => UI.toast(t('Failed to parse file: {e}', { e: file.name }), 'error');
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data || !Array.isArray(data.nodes)) throw new Error(t('Not an OrgChart Pro file'));
+        const check = Utils.validateNodes(data.nodes);
+        if (!check.valid) { UI.toast(check.errors[0], 'error'); return; }
+        this.pushUndo();
+        DataService.setData({
+          organization: data.organization && typeof data.organization === 'object' ? data.organization : {},
+          nodes: data.nodes,
+          ...(data.layout && typeof data.layout === 'object' ? { layout: data.layout } : {}),
+        });
+        OrgChart.collapsedIds.clear();
+        OrgChart.selectedId = null;
+        UI.closeDrawer();
+        UI.closeModal('storageModal');
+        this.autoSave();
+        App.refresh();
+        UI.toast(t('Organization loaded'), 'success');
+      } catch (e) {
+        UI.toast(t('Failed to parse file: {e}', { e: e.message }), 'error');
+      }
+    };
+    reader.readAsText(file);
   },
 };

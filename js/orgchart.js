@@ -101,24 +101,29 @@ const OrgChart = {
       .separation((a, b) => a.parent === b.parent ? 1 : 1.2);
 
     this.tree(this.root);
+    this.root.each(d => { d._base = this._pos(d); }); // auto position, before manual shifts
+    this._applyShifts();
 
     // Draw links: right-angle (elbow) connectors, edge of parent card → edge of child card.
     // Siblings share the same bus line, so the hierarchy reads like a classic org chart.
-    const elbow = ({ source: s, target: t }) => {
-      if (isHorizontal) {
-        const x1 = s.y + nw / 2, x2 = t.y - nw / 2, mx = (x1 + x2) / 2;
-        return `M${x1},${s.x}H${mx}V${t.x}H${x2}`;
-      }
-      const y1 = s.y + nh / 2, y2 = t.y - nh / 2, my = (y1 + y2) / 2;
-      return `M${s.x},${y1}V${my}H${t.x}V${y2}`;
-    };
-
+    // Paths are filled in by _updateLinks(), which also runs while a card or line is dragged.
     this.g.append('g').attr('class', 'org-links')
       .selectAll('.org-link')
       .data(this.root.links())
       .join('path')
-      .attr('class', 'org-link')
-      .attr('d', elbow);
+      .attr('class', 'org-link');
+
+    // Wide invisible hit area over each bus line so it can be dragged
+    this.g.append('g').attr('class', 'org-bus')
+      .selectAll('.bus-handle')
+      .data(this.root.descendants().filter(d => d.children))
+      .join('path')
+      .attr('class', 'bus-handle')
+      .style('cursor', isHorizontal ? 'ew-resize' : 'ns-resize')
+      .on('click', event => event.stopPropagation())
+      .call(this._setupBusDrag());
+
+    this._updateLinks();
     if (this.selectedId) this._highlightPath(this.selectedId);
 
     // Draw nodes
@@ -130,9 +135,7 @@ const OrgChart = {
         if (d.data.id === this.selectedId) cls += ' selected';
         return cls;
       })
-      .attr('transform', d => isHorizontal
-        ? `translate(${d.y - nw/2},${d.x - nh/2})`
-        : `translate(${d.x - nw/2},${d.y - nh/2})`)
+      .attr('transform', d => this._xform(d))
       .call(this._setupDrag());
 
     // Node accent bar (top)
@@ -373,27 +376,136 @@ const OrgChart = {
     setTimeout(() => this.fitToScreen(), 100);
   },
 
+  // ----- Manual layout -----
+  // Cards and connector lines can be dragged. The shifts are kept in the data (so undo, Save and
+  // JSON export carry them), separately for the vertical and horizontal layout:
+  //   data.layout[v|h].nodes[id] = [dx, dy]  card shift from its auto position (children follow)
+  //   data.layout[v|h].bus[id]   = n         shift of the shared connector line under node `id`
+  _lay(write) {
+    const data = DataService.getData();
+    const k = this.layout === 'horizontal' ? 'h' : 'v';
+    if (write) {
+      data.layout = data.layout || {};
+      data.layout[k] = data.layout[k] || {};
+      data.layout[k].nodes = data.layout[k].nodes || {};
+      data.layout[k].bus = data.layout[k].bus || {};
+    }
+    return (data.layout && data.layout[k]) || {};
+  },
+
+  // Card centre in screen space (d3.tree's x/y swap in the horizontal layout)
+  _pos(d) {
+    return this.layout === 'horizontal' ? { x: d.y, y: d.x } : { x: d.x, y: d.y };
+  },
+
+  _place(d, x, y) {
+    if (this.layout === 'horizontal') { d.y = x; d.x = y; } else { d.x = x; d.y = y; }
+  },
+
+  _xform(d) {
+    const p = this._pos(d);
+    return `translate(${p.x - this._nodeWidth / 2},${p.y - this._nodeHeight / 2})`;
+  },
+
+  // auto position + own shift + the shifts of all ancestors, so moving a card moves its branch
+  _applyShifts() {
+    const shifts = this._lay().nodes || {};
+    this.root.eachBefore(d => {
+      const o = shifts[d.data.id] || [];
+      const up = d.parent ? d.parent._shift : [0, 0];
+      d._own = [+o[0] || 0, +o[1] || 0];
+      d._shift = [up[0] + d._own[0], up[1] + d._own[1]];
+      this._place(d, d._base.x + d._shift[0], d._base.y + d._shift[1]);
+    });
+  },
+
+  // (Re)compute every connector path and bus hit area from the current card positions
+  _updateLinks() {
+    const isH = this.layout === 'horizontal';
+    const nw = this._nodeWidth, nh = this._nodeHeight;
+    const shifts = this._lay().bus || {};
+    const bus = new Map();
+    this.root.each(p => {
+      if (!p.children) return;
+      const s = this._pos(p), ks = p.children.map(c => this._pos(c));
+      const shift = +shifts[p.data.id] || 0;
+      // the line sits halfway between the parent and its nearest child, plus the manual shift
+      bus.set(p.data.id, isH
+        ? { m: (s.x + nw / 2 + Math.min(...ks.map(k => k.x)) - nw / 2) / 2 + shift,
+            lo: Math.min(s.y, ...ks.map(k => k.y)), hi: Math.max(s.y, ...ks.map(k => k.y)) }
+        : { m: (s.y + nh / 2 + Math.min(...ks.map(k => k.y)) - nh / 2) / 2 + shift,
+            lo: Math.min(s.x, ...ks.map(k => k.x)), hi: Math.max(s.x, ...ks.map(k => k.x)) });
+    });
+    this.g.selectAll('.org-link').attr('d', l => {
+      const s = this._pos(l.source), tg = this._pos(l.target), b = bus.get(l.source.data.id);
+      return isH
+        ? `M${s.x + nw / 2},${s.y}H${b.m}V${tg.y}H${tg.x - nw / 2}`
+        : `M${s.x},${s.y + nh / 2}V${b.m}H${tg.x}V${tg.y - nh / 2}`;
+    });
+    this.g.selectAll('.bus-handle').attr('d', p => {
+      const b = bus.get(p.data.id);
+      return isH ? `M${b.m},${b.lo}V${b.hi}` : `M${b.lo},${b.m}H${b.hi}`;
+    });
+  },
+
+  _setupBusDrag() {
+    const self = this;
+    let moved = false;
+    return d3.drag()
+      .on('start', () => { moved = false; })
+      .on('drag', function(event, p) {
+        if (!moved) { moved = true; StorageService.pushUndo(); }
+        const bus = self._lay(true).bus;
+        bus[p.data.id] = (+bus[p.data.id] || 0) + (self.layout === 'horizontal' ? event.dx : event.dy);
+        self._updateLinks();
+      })
+      .on('end', () => { if (moved) StorageService.autoSave(); });
+  },
+
+  // Back to the automatic layout for the current orientation (undoable)
+  resetLayout() {
+    const data = DataService.getData();
+    const k = this.layout === 'horizontal' ? 'h' : 'v';
+    if (!data.layout || !data.layout[k]) return;
+    StorageService.pushUndo();
+    delete data.layout[k];
+    StorageService.autoSave();
+    this.render();
+    setTimeout(() => this.fitToScreen(), 100);
+    UI.toast(t('Layout reset'), 'success');
+  },
+
+  // Drag a card to move it (its branch and lines follow). Shift+drag onto another card changes its parent.
   _setupDrag() {
     const self = this;
     let dragMoved = false;
+    let reparent = false;
     let startX, startY;
     return d3.drag()
       .filter((event, d) => d.data.id !== '__root__') // the grouping card is not a real node
+      .subject((event, d) => self._pos(d)) // event.x/y = card centre in screen space
       .on('start', function(event, d) {
         dragMoved = false;
+        reparent = !!event.sourceEvent.shiftKey;
         startX = event.x;
         startY = event.y;
         self._dragStartId = d.data.id;
       })
-      .on('drag', function(event) {
-        const dx = event.x - startX;
-        const dy = event.y - startY;
-        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      .on('drag', function(event, d) {
+        if (!dragMoved && Math.abs(event.x - startX) <= 5 && Math.abs(event.y - startY) <= 5) return;
+        if (reparent) {
           dragMoved = true;
           d3.select(this).classed('dragging', true);
           d3.select(this).attr('transform',
             `translate(${event.x - self._nodeWidth/2}, ${event.y - self._nodeHeight/2})`);
+          return;
         }
+        if (!dragMoved) { dragMoved = true; StorageService.pushUndo(); }
+        const up = d.parent ? d.parent._shift : [0, 0];
+        self._lay(true).nodes[d.data.id] = [event.x - d._base.x - up[0], event.y - d._base.y - up[1]];
+        self._applyShifts();
+        self.g.selectAll('.org-node').attr('transform', n => self._xform(n));
+        self._updateLinks();
       })
       .on('end', function(event, d) {
         d3.select(this).classed('dragging', false);
@@ -403,7 +515,13 @@ const OrgChart = {
           self.selectNode(d.data.id);
           return;
         }
-        // Drag — find drop target
+        if (!reparent) {
+          const o = self._lay(true).nodes[d.data.id];
+          if (Math.abs(o[0]) < 1 && Math.abs(o[1]) < 1) delete self._lay(true).nodes[d.data.id];
+          StorageService.autoSave();
+          return;
+        }
+        // Shift+drag — find drop target
         const dropTarget = self._findDropTarget(event.x, event.y, d.data.id);
         if (dropTarget && dropTarget !== d.data.id) {
           const srcNode = DataService.getNode(d.data.id);
@@ -414,6 +532,11 @@ const OrgChart = {
             () => {
               StorageService.pushUndo();
               DataService.moveNode(d.data.id, dropTarget);
+              // its old shift was relative to the old parent
+              ['v', 'h'].forEach(k => {
+                const l = DataService.getData().layout;
+                if (l && l[k] && l[k].nodes) delete l[k].nodes[d.data.id];
+              });
               self.render();
               UI.toast(t('Node moved successfully'), 'success');
             }

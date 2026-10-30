@@ -71,6 +71,14 @@
   stroke-width: 3;
 }
 
+/* Invisible wide hit area to drag a connector (bus) line */
+.bus-handle {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+}
+.bus-handle:hover { stroke: var(--accent); stroke-opacity: 0.2; }
+
 /* Empty state */
 .chart-empty {
   position: absolute; inset: 0;
