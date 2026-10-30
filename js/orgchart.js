@@ -16,12 +16,14 @@ const OrgChart = {
   _filterDept: '',
   _filterType: '',
   _autoCollapse: true,
+  _multi: new Set(), // long-pressed items: 'n:<nodeId>' for cards, 'b:<nodeId>' for the line under a node
 
   // Call after replacing the whole dataset so the next chart open starts tidy again
   resetView() {
     this.collapsedIds.clear();
     this.selectedId = null;
     this._autoCollapse = true;
+    this._multi.clear();
   },
 
   init() {
@@ -41,6 +43,8 @@ const OrgChart = {
 
     this.svg.call(this.zoom);
     this.svg.on('dblclick.zoom', null);
+    this.svg.on('contextmenu', event => event.preventDefault()); // long-press must not open the touch menu
+    this._multi.clear();
 
     // Auto-collapse a large chart once per freshly opened dataset (page load, import, load).
     // Never on later re-renders, or adding the 21st node would suddenly fold the whole chart.
@@ -264,9 +268,12 @@ const OrgChart = {
         .style('font-size', hasCollapsed ? '9px' : '14px');
     });
 
+    this._paintMulti();
+
     // Click background to deselect
     this.svg.on('click', () => {
       if (this._justSelected) { this._justSelected = false; return; }
+      this._multi.clear();
       this.selectedId = null;
       UI.closeDrawer();
       this.render();
@@ -464,18 +471,90 @@ const OrgChart = {
     });
   },
 
+  // ----- Multi-select (long-press) -----
+  // Holding a card or line for half a second without moving adds it to / removes it from the
+  // selection. Dragging any selected item then moves the whole selection together.
+  _armLongPress(key) {
+    const st = { fired: false, on: false, timer: null };
+    st.timer = setTimeout(() => { st.fired = true; st.on = this._toggleMulti(key); }, 500);
+    return st;
+  },
+
+  _toggleMulti(key) {
+    if (!this._multi.delete(key)) this._multi.add(key);
+    this._paintMulti();
+    return this._multi.has(key);
+  },
+
+  _paintMulti() {
+    if (!this.g) return;
+    this.g.selectAll('.org-node').classed('multi', d => this._multi.has('n:' + d.data.id));
+    this.g.selectAll('.bus-handle').classed('multi', d => this._multi.has('b:' + d.data.id));
+  },
+
+  clearMulti() {
+    this._multi.clear();
+    this._paintMulti();
+  },
+
+  // What actually has to be shifted: a selected card whose ancestor is also selected already moves
+  // with it, and so does the line under any card that moves.
+  _movers() {
+    const nodes = [], buses = [], moving = new Set();
+    this.root.each(d => { // parents are visited before their children
+      const id = d.data.id;
+      const inherited = d.parent && moving.has(d.parent.data.id);
+      const picked = this._multi.has('n:' + id);
+      if (inherited || picked) moving.add(id);
+      if (picked && !inherited) nodes.push(id);
+      if (d.children && this._multi.has('b:' + id) && !moving.has(id)) buses.push(id);
+    });
+    return { nodes, buses };
+  },
+
+  _moveSelected(dx, dy) {
+    const lay = this._lay(true);
+    const mv = this._movers();
+    mv.nodes.forEach(id => {
+      const o = lay.nodes[id] || [];
+      lay.nodes[id] = [(+o[0] || 0) + dx, (+o[1] || 0) + dy];
+    });
+    mv.buses.forEach(id => { lay.bus[id] = (+lay.bus[id] || 0) + (this.layout === 'horizontal' ? dx : dy); });
+    this._applyShifts();
+    this.g.selectAll('.org-node').attr('transform', n => this._xform(n));
+    this._updateLinks();
+  },
+
   _setupBusDrag() {
     const self = this;
-    let moved = false;
+    let moved = false, multiMode = false, lp, sx, sy, lx, ly;
     return d3.drag()
-      .on('start', () => { moved = false; })
+      .on('start', function(event, p) {
+        moved = false;
+        sx = lx = event.x;
+        sy = ly = event.y;
+        lp = self._armLongPress('b:' + p.data.id);
+      })
       .on('drag', function(event, p) {
-        if (!moved) { moved = true; StorageService.pushUndo(); }
+        if (lp.fired && !lp.on) return; // long-press just released this line from the selection
+        if (!moved) {
+          if (Math.abs(event.x - sx) <= 5 && Math.abs(event.y - sy) <= 5) return;
+          moved = true;
+          clearTimeout(lp.timer);
+          multiMode = self._multi.has('b:' + p.data.id);
+          StorageService.pushUndo();
+        }
+        const dx = event.x - lx, dy = event.y - ly;
+        lx = event.x; ly = event.y;
+        if (multiMode) { self._moveSelected(dx, dy); return; }
         const bus = self._lay(true).bus;
-        bus[p.data.id] = (+bus[p.data.id] || 0) + (self.layout === 'horizontal' ? event.dx : event.dy);
+        bus[p.data.id] = (+bus[p.data.id] || 0) + (self.layout === 'horizontal' ? dx : dy);
         self._updateLinks();
       })
-      .on('end', () => { if (moved) StorageService.autoSave(); });
+      .on('end', () => {
+        clearTimeout(lp.timer);
+        if (moved) StorageService.autoSave();
+      });
   },
 
   // Back to the automatic layout for the current orientation (undoable)
@@ -496,19 +575,34 @@ const OrgChart = {
     const self = this;
     let dragMoved = false;
     let reparent = false;
-    let startX, startY;
+    let multiMode = false;
+    let lp, startX, startY, lastX, lastY;
     return d3.drag()
       .filter((event, d) => d.data.id !== '__root__') // the grouping card is not a real node
       .subject((event, d) => self._pos(d)) // event.x/y = card centre in screen space
       .on('start', function(event, d) {
         dragMoved = false;
         reparent = !!event.sourceEvent.shiftKey;
-        startX = event.x;
-        startY = event.y;
+        startX = lastX = event.x;
+        startY = lastY = event.y;
         self._dragStartId = d.data.id;
+        lp = self._armLongPress('n:' + d.data.id);
       })
       .on('drag', function(event, d) {
+        if (lp.fired && !lp.on) return; // long-press just released this card from the selection
         if (!dragMoved && Math.abs(event.x - startX) <= 5 && Math.abs(event.y - startY) <= 5) return;
+        clearTimeout(lp.timer);
+        if (!reparent && !dragMoved && self._multi.has('n:' + d.data.id)) {
+          multiMode = true;
+        } else if (!dragMoved) {
+          multiMode = false;
+        }
+        if (multiMode) {
+          if (!dragMoved) { dragMoved = true; StorageService.pushUndo(); }
+          self._moveSelected(event.x - lastX, event.y - lastY);
+          lastX = event.x; lastY = event.y;
+          return;
+        }
         if (reparent) {
           dragMoved = true;
           d3.select(this).classed('dragging', true);
@@ -525,12 +619,19 @@ const OrgChart = {
       })
       .on('end', function(event, d) {
         d3.select(this).classed('dragging', false);
+        clearTimeout(lp.timer);
         if (!dragMoved) {
-          // Click — select node
           self._justSelected = true;
+          if (lp.fired) { // long-press only toggled the selection; swallow the click that follows
+            setTimeout(() => { self._justSelected = false; }, 100);
+            return;
+          }
+          // Click — select node
+          self._multi.clear();
           self.selectNode(d.data.id);
           return;
         }
+        if (multiMode) { StorageService.autoSave(); return; }
         if (!reparent) {
           const o = self._lay(true).nodes[d.data.id];
           if (Math.abs(o[0]) < 1 && Math.abs(o[1]) < 1) delete self._lay(true).nodes[d.data.id];

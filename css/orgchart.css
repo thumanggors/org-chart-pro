@@ -79,6 +79,11 @@
 }
 .bus-handle:hover { stroke: var(--accent); stroke-opacity: 0.2; }
 
+/* Long-press multi-selection */
+#orgchartSvg { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.org-node.multi .node-bg { stroke: var(--warning); stroke-width: 2.5; stroke-dasharray: 6,3; }
+.bus-handle.multi, .bus-handle.multi:hover { stroke: var(--warning); stroke-opacity: 0.55; }
+
 /* Empty state */
 .chart-empty {
   position: absolute; inset: 0;

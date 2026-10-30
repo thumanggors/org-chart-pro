@@ -73,7 +73,7 @@ const I18n = {
       'Move Organization Unit?': 'Pindahkan Unit Organisasi?',
       'Move "{a}" under "{b}"?': 'Pindahkan "{a}" ke bawah "{b}"?',
       'Node moved successfully': 'Node berhasil dipindahkan',
-      'Reset layout (drag cards and lines to arrange · Shift+drag onto a card to change its parent)': 'Reset tata letak (seret kartu dan garis untuk menata · Shift+seret ke kartu lain untuk mengganti atasan)',
+      'Reset layout (drag cards and lines to arrange · long-press to select several · Shift+drag onto a card to change its parent)': 'Reset tata letak (seret kartu dan garis untuk menata · tekan lama untuk memilih beberapa · Shift+seret ke kartu lain untuk mengganti atasan)',
       'Layout reset': 'Tata letak dikembalikan',
 
       // Departments

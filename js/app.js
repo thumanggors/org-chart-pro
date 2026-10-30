@@ -27,6 +27,7 @@ const App = {
       if (e.key === 'Escape') {
         document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
         UI.closeDrawer();
+        OrgChart.clearMulti();
         this.hideExportMenu();
         document.getElementById('searchResults').classList.remove('active');
         document.body.style.overflow = '';
