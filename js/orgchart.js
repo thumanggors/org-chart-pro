@@ -15,6 +15,14 @@ const OrgChart = {
   _justSelected: false,
   _filterDept: '',
   _filterType: '',
+  _autoCollapse: true,
+
+  // Call after replacing the whole dataset so the next chart open starts tidy again
+  resetView() {
+    this.collapsedIds.clear();
+    this.selectedId = null;
+    this._autoCollapse = true;
+  },
 
   init() {
     const container = document.getElementById('chartContainer');
@@ -34,13 +42,17 @@ const OrgChart = {
     this.svg.call(this.zoom);
     this.svg.on('dblclick.zoom', null);
 
-    // Auto-collapse below company+board+president on first render
-    if (this.collapsedIds.size === 0 && DataService.getNodes().length > 20) {
-      DataService.getNodes().forEach(n => {
-        if (n.type !== 'company' && n.type !== 'board' && DataService.getChildren(n.id).length > 0) {
-          this.collapsedIds.add(n.id);
-        }
-      });
+    // Auto-collapse a large chart once per freshly opened dataset (page load, import, load).
+    // Never on later re-renders, or adding the 21st node would suddenly fold the whole chart.
+    if (this._autoCollapse) {
+      this._autoCollapse = false;
+      if (DataService.getNodes().length > 20) {
+        DataService.getNodes().forEach(n => {
+          if (n.type !== 'company' && n.type !== 'board' && DataService.getChildren(n.id).length > 0) {
+            this.collapsedIds.add(n.id);
+          }
+        });
+      }
     }
 
     this.render();
@@ -265,6 +277,10 @@ const OrgChart = {
     this.selectedId = id;
     const node = DataService.getNode(id);
     if (node) UI.openNodeDrawer(node);
+    // Unfold every ancestor so the selected (or just added) node is actually visible
+    for (let cur = node; cur && cur.parentId; cur = DataService.getNode(cur.parentId)) {
+      this.collapsedIds.delete(cur.parentId);
+    }
     this.render(); // render() re-applies the path highlight for selectedId
   },
 

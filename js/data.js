@@ -136,8 +136,7 @@ const DataService = {
       StorageService.pushUndo();
       this._data = { organization: {}, nodes: [] };
       this._changeLog = [];
-      OrgChart.collapsedIds.clear();
-      OrgChart.selectedId = null;
+      OrgChart.resetView();
       UI.closeDrawer();
       StorageService.autoSave();
       App.refresh();

@@ -69,14 +69,7 @@ const App = {
       searchInput.value = '';
       OrgChart.showDepartment(''); // the found node may sit outside a department filter
       setTimeout(() => {
-        // Ensure ancestors are expanded
-        let cur = DataService.getNode(id);
-        while (cur && cur.parentId) {
-          OrgChart.collapsedIds.delete(cur.parentId);
-          cur = DataService.getNode(cur.parentId);
-        }
-        OrgChart.render();
-        OrgChart.selectNode(id);
+        OrgChart.selectNode(id); // also unfolds its ancestors
         OrgChart.centerOnNode(id);
       }, 200);
     });

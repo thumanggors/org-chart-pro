@@ -132,6 +132,7 @@ const ImportService = {
       nodes: this._pendingData,
     });
     this._pendingData = null;
+    OrgChart.resetView();
     UI.closeModal('importModal');
     App.refresh();
     UI.toast(t('Excel imported successfully'), 'success');
