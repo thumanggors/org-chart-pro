@@ -205,8 +205,7 @@ const StorageService = {
           nodes: data.nodes,
           ...(data.layout && typeof data.layout === 'object' ? { layout: data.layout } : {}),
         });
-        OrgChart.collapsedIds.clear();
-        OrgChart.selectedId = null;
+        OrgChart.resetView();
         UI.closeDrawer();
         UI.closeModal('storageModal');
         this.autoSave();
